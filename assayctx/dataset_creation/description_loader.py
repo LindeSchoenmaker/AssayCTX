@@ -9,7 +9,7 @@ FIG_DIR = pystow.join("AssayCTX", "figures")
 
 sql = """
 SELECT
-    ASSAYS.chembl_id,
+    DISTINCT ASSAYS.chembl_id,
     ASSAYS.description,
     ASSAYS.assay_type,
     ASSAYS.assay_test_type,
@@ -42,7 +42,7 @@ JOIN ACTIVITIES ON ASSAYS.assay_id == ACTIVITIES.assay_id
 JOIN DOCS ON ASSAYS.doc_id == DOCS.doc_id 
 """
 
-df = chembl_downloader.query(sql, version='33')
+df = chembl_downloader.query(sql, version='34')
 
 # keep binding and functional assays
 df = df.loc[df['assay_type'].isin(['F', 'B'])]
@@ -58,4 +58,5 @@ df.to_csv(DATA_DIR / "assay_desc_mapping_fb_info.csv", index=False)
 
 # save descriptions and assay type
 df = df[['desc_length', 'chembl_id', 'description', 'assay_type']]
+df = df.drop_duplicates().reset_index(drop=True)
 df.to_csv(DATA_DIR / "assay_desc_mapping_fb.csv", index=False)
