@@ -1,19 +1,20 @@
-import pandas as pd
-import numpy as np
-import pystow
 import json
+
+import pandas as pd
+import pystow
 
 DATA_DIR = pystow.join("AssayCTX", "data")
 
 if __name__ == "__main__":
     name = 'all'
-    df = pd.read_csv(DATA_DIR / 'assay_description_{name}.csv')
+    df = pd.read_csv(DATA_DIR / 'assay_desc_mapping_fb_info.csv')
     df['assay_tax_id'] = df['assay_tax_id'].astype('str')
     df['src_id'] = df['src_id'].astype('str')
     df['confidence_score'] = df['confidence_score'].astype('str')
 
     # number of unique values per property
     df = df.loc[df['assay_type'].isin(['F', 'B'])]
+    # also havw pKi ect.
     df.loc[~df['standard_type'].isin(['EC50', 'Ki', 'IC50', 'Kd']), 'standard_type'] = 'other'
     number_unique = pd.Series(df.nunique(axis=0), name = 'number_unique')
     fraction_defined = pd.Series((df.count()/len(df)), name = 'fraction_defined')
@@ -23,7 +24,7 @@ if __name__ == "__main__":
 
     fp_dict = {}
 
-    for column_name in ['assay_type', 'standard_type', 'relationship_type', 'assay_tax_id', 'src_id', 'curated_by', 'bao_format', 'confidence_score']:
+    for column_name in ['assay_type', 'standard_type', 'relationship_type', 'src_id', 'curated_by', 'bao_format', 'confidence_score']:
         column = df[column_name]
         unique_values = column.unique()
         d1=zip(unique_values, range(len(unique_values)))

@@ -15,6 +15,7 @@ if __name__ == "__main__":
         .filter(pl.col("desc_length") <= 500) # remove rows with length > 500
         .drop("chembl_id")
         .drop("assay_type")
+        .drop("desc_length")
         .drop_nulls()
         .unique()
         .collect()
