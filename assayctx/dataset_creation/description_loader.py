@@ -51,6 +51,9 @@ df = df.loc[df['assay_type'].isin(['F', 'B'])]
 df['desc_length']  = df['description'].str.len()
 fig, ax = plt.subplots()
 df.hist(column='desc_length', bins=100, ax=ax)
+ax.set_ylabel("Frequency")
+ax.set_title("")
+fig.tight_layout()
 fig.savefig(FIG_DIR / 'desc_length.png')
 
 # save data
