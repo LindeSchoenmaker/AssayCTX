@@ -21,6 +21,7 @@ if __name__ == "__main__":
     df_info=pd.concat([number_unique,fraction_defined],axis=1).sort_values('fraction_defined', ascending = False)
     print("number of unique values per property")
     print(df_info)
+    df_info.to_csv(DATA_DIR / 'chembl_fp_all_fraction_SI.csv')
 
     fp_dict = {}
 
