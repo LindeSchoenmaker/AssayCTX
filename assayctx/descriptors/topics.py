@@ -61,7 +61,18 @@ def runner(transformer, output, target=None):
     embedding_model = SentenceTransformer(transformer)
     embeddings = embedding_model.encode(descriptions, show_progress_bar=False)
 
-    for min_cluster_size in [8, 16, 32, 64, 128]:
+    min_cluster_sizes = [8, 16, 32, 64, 128]
+    superv_targets = [None, "assay_type", "bao_format", "standard_type"]
+
+    for min_cluster_size in min_cluster_sizes:
+        fname = DATA_DIR / f"descriptions_{output}_{target}_{min_cluster_size}.parquet"
+        columns = []
+        df_org = pd.DataFrame()
+        if os.path.isfile(fname):
+            df_org = pd.read_parquet(fname).drop(columns=["description", "assay_type", "bao_format", "standard_type"])
+            columns = [x.replace('olr_cluster_', "") for x in df_org.columns if x.startswith('olr_cluster_')]
+            columns = [None if x == 'None' else x for x in columns]
+
         umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.1, random_state=42)
         hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, min_cluster_size=min_cluster_size, max_cluster_size=1000)
 
@@ -70,7 +81,7 @@ def runner(transformer, output, target=None):
             hdbscan_model=hdbscan_model,
             embedding_model=embedding_model,
         )
-        for supervised in [None, "assay_type", "bao_format", "standard_type"]:
+        for supervised in [x for x in superv_targets if x not in columns]:
             print("fit_transform normal model")
             if supervised:
                 y=df[supervised]
@@ -90,7 +101,9 @@ def runner(transformer, output, target=None):
             df[f'cluster_{supervised}'] = topics
             df[f'olr_cluster_{supervised}'] = new_topics
 
-        df.to_parquet(DATA_DIR / f"descriptions_{output}_{target}_{min_cluster_size}.parquet", compression="zstd")
+        if len(df_org) > 0:
+            df = pd.merge(df, df_org, on='chembl_id')
+        df.to_parquet(fname, compression="zstd")
         
 
 if __name__ == "__main__":
