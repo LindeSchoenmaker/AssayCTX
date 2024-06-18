@@ -65,6 +65,68 @@ def UMAP_main_text():
     plt.savefig(FIG_DIR / "embeddings_main_text.png")
 
 
+def UMAP_topics():
+    embeddings = np.array(helper["word_vectors"].to_list())
+    embedding = reducer.fit_transform(embeddings)
+
+    addition = pd.DataFrame(embedding, columns=["x", "y", "z1", "z2", "z3"])
+
+    columns = ['cluster_None', 'olr_cluster_None']
+
+    addition[columns] = helper[columns]
+
+    plt.figure(figsize=(6, 4), dpi=600)
+    plt.subplots_adjust(hspace=0.5)
+
+
+    for i, color_by in enumerate(columns):
+        ax = plt.subplot(1, 2, i + 1)
+        # bg points
+        sns.scatterplot(
+            data=addition,
+            x="x",
+            y="y",
+            c="grey",
+            alpha=0.1,
+            s=4,
+            ax=ax,
+        )
+
+        addition[color_by] = addition[color_by].astype(str)
+        counts = addition[color_by].value_counts()
+        counts = counts.drop('-1')
+        plot_df = addition.loc[addition[color_by].isin(counts[:10].index.tolist())]
+        
+        plot_df[color_by] = plot_df[color_by].apply(lambda x : x.replace('assay_tax_id_', '').replace('confidence_score_', '').replace('_', ' ').replace('.0', '').replace('BAO ', ''))
+        # if i > 3: continue
+        
+        # ax.scatter(plot_df['x'], plot_df['y'], s=4, c=plot_df[color_by], cmap='bright')
+        # labeled points
+        sns.scatterplot(
+            data=plot_df,
+            x="x",
+            y="y",
+            hue=color_by,
+            hue_order=sorted(plot_df[color_by].unique().tolist()),
+            palette="bright",
+            s=4,
+            ax=ax,
+            legend=False
+        )
+        ax.set_xlim(-6, 6)
+        ax.set_ylim(-6, 6)
+        new_title = f"{color_by.replace('_x', '').replace('_', ' ').title()}" #, fontsize=10)
+        ax.set_title(new_title, fontsize=14, pad=10)
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        ax.set(xticklabels=[], yticklabels=[])
+        
+        ax.set_aspect('equal', adjustable='box')
+
+    plt.tight_layout()
+    plt.savefig(FIG_DIR / "embeddings_topics.png")
+
+
 def UMAP_SI():
     columns = ['assay_type', 'topic',
         'assay_test_type', 'assay_category', 'assay_cell_type',
@@ -119,16 +181,15 @@ if __name__ == "__main__":
     FIG_DIR = pystow.join("AssayCTX", "figures")
 
     info = pd.read_csv(DATA_DIR / "assay_desc_mapping_fb_info.csv")
-    # topics = pd.read_parquet(DATA_DIR / "descriptions_biobert.parquet")
     sentence_vectors = pd.read_parquet(DATA_DIR / "sentence_vectors.parquet")[['description', 'word_vectors']]
 
     sentence_vectors = sentence_vectors[sentence_vectors["description"].notna()].drop_duplicates(subset=["description"])
 
     # merge descriptions and topics
-    # helper = descriptions.merge(topics, left_on="description", how="left", right_on="description")
-
+    sentence_vectors = sentence_vectors.merge(info, left_on="description", how="left", right_on="description")
+    topics = pd.read_parquet(DATA_DIR / "descriptions_biobert_None_128.parquet")[['description', 'cluster_None', 'olr_cluster_None']]
+    helper = sentence_vectors.merge(topics, left_on="description", how="left", right_on="description")
     # The following cells sample 10 % of assay descriptions from ChEMBL for clearer visualizations.
-    helper = sentence_vectors.merge(info, left_on="description", how="left", right_on="description")
     helper = helper.sample(frac=0.1, random_state=40)
     helper = helper.dropna(subset = ["word_vectors"]).reset_index()
 
@@ -141,4 +202,5 @@ if __name__ == "__main__":
     addition = pd.DataFrame(embedding, columns=["x", "y", "z1", "z2", "z3"])
 
     # UMAP_SI()
-    UMAP_main_text()
+    # UMAP_main_text()
+    UMAP_topics()
