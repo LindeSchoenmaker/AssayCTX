@@ -1,9 +1,21 @@
+import pickle
+
 import cuml
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pystow
 import seaborn as sns
+from textblob import TextBlob
+
+DATA_DIR = pystow.join("AssayCTX", "data")
+
+# Use TextBlob
+def textblob_tokenizer(str_input):
+    blob = TextBlob(str_input.lower())
+    tokens = blob.words
+    words = [token.stem() for token in tokens]
+    return words
 
 
 def UMAP_main_text():
@@ -48,8 +60,8 @@ def UMAP_main_text():
             s=4,
             ax=ax,
         )
-        ax.set_xlim(-6, 6)
-        ax.set_ylim(-6, 6)
+        ax.set_xlim(-8, 8)
+        ax.set_ylim(-8, 8)
         new_title = f"{color_by.replace('_x', '').replace('_', ' ').title()}" #, fontsize=10)
         ax.set_title(new_title, fontsize=14, pad=10)
         ax.set_xlabel("")
@@ -62,7 +74,7 @@ def UMAP_main_text():
         ax.set_aspect('equal', adjustable='box')
 
     plt.tight_layout()
-    plt.savefig(FIG_DIR / "embeddings_main_text.png")
+    plt.savefig(FIG_DIR / "bow_main_text.png")
 
 
 def UMAP_topics():
@@ -115,8 +127,7 @@ def UMAP_topics():
         )
         ax.set_xlim(-6, 6)
         ax.set_ylim(-6, 6)
-        new_title = f"{color_by.replace('_x', '').replace('_', ' ').title()}" #, fontsize=10)
-        ax.set_title(new_title, fontsize=14, pad=10)
+        ax.set_title(f'{"Without outlier reduction" if i == 0 else "With outlier reduction"}', fontsize=14, pad=10)
         ax.set_xlabel("")
         ax.set_ylabel("")
         ax.set(xticklabels=[], yticklabels=[])
@@ -136,6 +147,7 @@ def UMAP_SI():
         'tissue_id', 'variant_id', 'aidx', 'pref_name', 'standard_type',
         'journal', 'year', 'pubmed_id', 'doi']
 
+    columns = [column for column in columns if column in helper.columns.to_list()]
     # add helper["topic"] to addition
     addition[columns] = helper[columns]
 
@@ -181,26 +193,40 @@ if __name__ == "__main__":
     FIG_DIR = pystow.join("AssayCTX", "figures")
 
     info = pd.read_csv(DATA_DIR / "assay_desc_mapping_fb_info.csv")
-    sentence_vectors = pd.read_parquet(DATA_DIR / "sentence_vectors.parquet")[['description', 'word_vectors']]
 
-    sentence_vectors = sentence_vectors[sentence_vectors["description"].notna()].drop_duplicates(subset=["description"])
+    embedding = 'UMAP'
+    if embedding == 'UMAP':
+        word_vector = 'word_vectors_UMAP'
 
-    # merge descriptions and topics
-    sentence_vectors = sentence_vectors.merge(info, left_on="description", how="left", right_on="description")
-    topics = pd.read_parquet(DATA_DIR / "descriptions_biobert_None_128.parquet")[['description', 'cluster_None', 'olr_cluster_None']]
-    helper = sentence_vectors.merge(topics, left_on="description", how="left", right_on="description")
-    # The following cells sample 10 % of assay descriptions from ChEMBL for clearer visualizations.
-    helper = helper.sample(frac=0.1, random_state=40)
-    helper = helper.dropna(subset = ["word_vectors"]).reset_index()
+        with open(DATA_DIR / 'chembl_vectorizer.pk', 'rb') as fn:
+            vectorizer = pickle.load(fn)
+
+        info = info.sample(frac=0.1, random_state=40)
+
+        corpus = info.description
+        vectors = vectorizer.transform(corpus)
+        
+        info['word_vectors_UMAP'] = vectors.toarray().tolist()
+    elif embedding == 'BioBERT':
+        word_vector = 'word_vectors'
+        sentence_vectors = pd.read_parquet(DATA_DIR / "sentence_vectors.parquet")[['description', 'word_vectors']]
+        sentence_vectors = sentence_vectors[sentence_vectors["description"].notna()].drop_duplicates(subset=["description"])
+        # merge descriptions and topics
+        sentence_vectors = sentence_vectors.merge(info, left_on="description", how="left", right_on="description")
+        topics = pd.read_parquet(DATA_DIR / "descriptions_biobert_None_128.parquet")[['description', 'cluster_None', 'olr_cluster_None']]
+        helper = sentence_vectors.merge(topics, left_on="description", how="left", right_on="description")
+        helper = helper.sample(frac=0.1, random_state=40)
+    
+    helper = info.dropna(subset = [word_vector]).reset_index()
 
     # UMAP plot for ChEMBL embeddings
     reducer = cuml.UMAP(n_components=5, n_neighbors=15, min_dist=0.1, random_state=42)
 
-    embeddings = np.array(helper["word_vectors"].to_list())
+    embeddings = np.array(helper[word_vector].to_list())
     embedding = reducer.fit_transform(embeddings)
 
     addition = pd.DataFrame(embedding, columns=["x", "y", "z1", "z2", "z3"])
 
-    # UMAP_SI()
-    # UMAP_main_text()
-    UMAP_topics()
+    UMAP_SI()
+    UMAP_main_text()
+    # UMAP_topics()
