@@ -60,8 +60,12 @@ def UMAP_main_text():
             s=4,
             ax=ax,
         )
-        ax.set_xlim(-8, 8)
-        ax.set_ylim(-8, 8)
+        if descriptor == 'BOW':
+            lim = 8
+        else:
+            lim = 6
+        ax.set_xlim(-lim, lim)
+        ax.set_ylim(-lim, lim)
         new_title = f"{color_by.replace('_x', '').replace('_', ' ').title()}" #, fontsize=10)
         ax.set_title(new_title, fontsize=14, pad=10)
         ax.set_xlabel("")
@@ -74,7 +78,7 @@ def UMAP_main_text():
         ax.set_aspect('equal', adjustable='box')
 
     plt.tight_layout()
-    plt.savefig(FIG_DIR / "bow_main_text.png")
+    plt.savefig(FIG_DIR / f"{descriptor}_main_text.png")
 
 
 def UMAP_topics():
@@ -172,8 +176,12 @@ def UMAP_SI():
             ax=ax,
             legend=True,
         )
-        ax.set_xlim(-5, 5)
-        ax.set_ylim(-5, 5)
+        if descriptor == 'BOW':
+            lim = 8
+        else:
+            lim = 6
+        ax.set_xlim(-lim, lim)
+        ax.set_ylim(-lim, lim)
         ax.set_title(f"{color_by.replace('_x', '').replace('_', ' ').title()}", fontsize=10)
         ax.set_xlabel("")
         ax.set_ylabel("")
@@ -183,7 +191,7 @@ def UMAP_SI():
         ax.set_aspect('equal', adjustable='box')
 
     plt.tight_layout()
-    plt.savefig(FIG_DIR / "embeddings_SI.png")
+    plt.savefig(FIG_DIR / f"{descriptor}_embeddings_SI.png")
 
 if __name__ == "__main__":
     # set data directories using pystow
@@ -194,9 +202,9 @@ if __name__ == "__main__":
 
     info = pd.read_csv(DATA_DIR / "assay_desc_mapping_fb_info.csv")
 
-    embedding = 'UMAP'
-    if embedding == 'UMAP':
-        word_vector = 'word_vectors_UMAP'
+    descriptor = 'BioBERT'
+    if descriptor == 'BOW':
+        word_vector = 'word_vectors_BOW'
 
         with open(DATA_DIR / 'chembl_vectorizer.pk', 'rb') as fn:
             vectorizer = pickle.load(fn)
@@ -206,16 +214,16 @@ if __name__ == "__main__":
         corpus = info.description
         vectors = vectorizer.transform(corpus)
         
-        info['word_vectors_UMAP'] = vectors.toarray().tolist()
-    elif embedding == 'BioBERT':
+        info[word_vector] = vectors.toarray().tolist()
+    elif descriptor == 'BioBERT':
         word_vector = 'word_vectors'
         sentence_vectors = pd.read_parquet(DATA_DIR / "sentence_vectors.parquet")[['description', 'word_vectors']]
         sentence_vectors = sentence_vectors[sentence_vectors["description"].notna()].drop_duplicates(subset=["description"])
         # merge descriptions and topics
-        sentence_vectors = sentence_vectors.merge(info, left_on="description", how="left", right_on="description")
+        info = sentence_vectors.merge(info, left_on="description", how="left", right_on="description")
         topics = pd.read_parquet(DATA_DIR / "descriptions_biobert_None_128.parquet")[['description', 'cluster_None', 'olr_cluster_None']]
-        helper = sentence_vectors.merge(topics, left_on="description", how="left", right_on="description")
-        helper = helper.sample(frac=0.1, random_state=40)
+        info = info.merge(topics, left_on="description", how="left", right_on="description")
+        info = info.sample(frac=0.1, random_state=40)
     
     helper = info.dropna(subset = [word_vector]).reset_index()
 
