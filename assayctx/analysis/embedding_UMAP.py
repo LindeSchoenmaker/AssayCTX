@@ -20,10 +20,12 @@ def textblob_tokenizer(str_input):
 
 def UMAP_main_text():
     columns = ['assay_type', 'assay_tax_id', 'confidence_score', 'curated_by', 'standard_type', 'bao_format']
+    names = {'assay_type': 'Assay type', 'assay_tax_id': 'Taxonomy', 'confidence_score': 'Confidence score', 'curated_by': 'Curation'
+             , 'standard_type': 'Standard type', 'bao_format': 'Format'}
 
     addition[columns] = helper[columns]
 
-    plt.figure(figsize=(10, 8), dpi=600)
+    plt.figure(figsize=(10, 9), dpi=600)
     plt.subplots_adjust(hspace=0.5)
 
 
@@ -66,15 +68,25 @@ def UMAP_main_text():
             lim = 6
         ax.set_xlim(-lim, lim)
         ax.set_ylim(-lim, lim)
-        new_title = f"{color_by.replace('_x', '').replace('_', ' ').title()}" #, fontsize=10)
-        ax.set_title(new_title, fontsize=14, pad=10)
+        ax.set_title(names[color_by], fontsize=14, pad=10)
         ax.set_xlabel("")
         ax.set_ylabel("")
         ax.set(xticklabels=[], yticklabels=[])
-        
-        ax.legend(fontsize=8, handletextpad=0.1, loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=3, bbox_transform=ax.transAxes)
+        if color_by == 'assay_type':
+            labels = ['Binding',  'Functional']
+        elif color_by == 'bao_format':
+            labels = ['Assay', 'Organism-based', 'Cell-based', 'Tissue-based', 'Single protein']
+        elif color_by == 'assay_tax_id':
+            labels = ['M. musculus', 'R. norvegicus', 'S. aureus', 'H. sapiens', 'Not defined']
+        else:
+            labels = None
+        ax.legend(fontsize=8, handletextpad=0, loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=2, bbox_transform=ax.transAxes)
         for count, legend_handle in enumerate(ax.get_legend().legend_handles):
             legend_handle.set(markersize = 5, alpha = 0.8, markeredgewidth=0)
+        if labels:
+            leg =ax.get_legend()
+            for t, l in zip(leg.texts, labels):
+                t.set_text(l)
         ax.set_aspect('equal', adjustable='box')
 
     plt.tight_layout()
@@ -220,9 +232,9 @@ if __name__ == "__main__":
         sentence_vectors = pd.read_parquet(DATA_DIR / "sentence_vectors.parquet")[['description', 'word_vectors']]
         sentence_vectors = sentence_vectors[sentence_vectors["description"].notna()].drop_duplicates(subset=["description"])
         # merge descriptions and topics
-        info = sentence_vectors.merge(info, left_on="description", how="left", right_on="description")
+        info = sentence_vectors.merge(info, left_on="description", how="inner", right_on="description")
         topics = pd.read_parquet(DATA_DIR / "descriptions_biobert_None_128.parquet")[['description', 'cluster_None', 'olr_cluster_None']]
-        info = info.merge(topics, left_on="description", how="left", right_on="description")
+        info = info.merge(topics, left_on="description", how="inner", right_on="description")
         info = info.sample(frac=0.1, random_state=40)
     
     helper = info.dropna(subset = [word_vector]).reset_index()
@@ -235,6 +247,6 @@ if __name__ == "__main__":
 
     addition = pd.DataFrame(embedding, columns=["x", "y", "z1", "z2", "z3"])
 
-    UMAP_SI()
+    # UMAP_SI()
     UMAP_main_text()
     # UMAP_topics()
