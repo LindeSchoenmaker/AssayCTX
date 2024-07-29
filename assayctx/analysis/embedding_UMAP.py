@@ -85,8 +85,8 @@ def UMAP_main_text():
             legend_handle.set(markersize = 5, alpha = 0.8, markeredgewidth=0)
         if labels:
             leg =ax.get_legend()
-            for t, l in zip(leg.texts, labels):
-                t.set_text(l)
+            for t, label in zip(leg.texts, labels):
+                t.set_text(label)
         ax.set_aspect('equal', adjustable='box')
 
     plt.tight_layout()
