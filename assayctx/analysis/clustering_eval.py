@@ -7,15 +7,16 @@ from sklearn import metrics
 os.environ['PYSTOW_HOME'] = "/zfsdata/data/linde"
 DATA_DIR = pystow.join("AssayCTX", "data")
 
-def calc_scores(df_org, i, assay_type, column = 'meta_target', supervised='olr_cluster_None'):
+def calc_scores(df, i, assay_type, column = 'meta_target', supervised='olr_cluster_None'):
     df_topic = pd.read_parquet(DATA_DIR / f"descriptions_biobert_nomax_None_{i}.parquet")
     print(len(df_topic))
-    df_topic = df_topic[df_topic['chembl_id'].isin(df_org.chembl_id.to_list())]
+    df_topic = df_topic[df_topic['chembl_id'].isin(df.chembl_id.to_list())]
 
     df_topic = df_topic[['chembl_id', 'olr_cluster_None', 'olr_cluster_assay_type', 'olr_cluster_standard_type']]
 
-    df_F = df_org.loc[df_org['assay_type'] == assay_type]
-    df = pd.merge(df_F, df_topic, on='chembl_id')
+    if assay_type:
+        df = df.loc[df['assay_type'] == assay_type]
+    df = pd.merge(df, df_topic, on='chembl_id')
 
     print(len(df.olr_cluster_None.unique()))
     print(metrics.adjusted_mutual_info_score(df[column], df[supervised]))
@@ -24,7 +25,7 @@ def calc_scores(df_org, i, assay_type, column = 'meta_target', supervised='olr_c
     print(metrics.v_measure_score(df[column], df[supervised]))
     print(metrics.fowlkes_mallows_score(df[column], df[supervised]))
 
-if __name__ == "__main__":
+if __name__ == "__main__":   
     df = pd.read_csv(DATA_DIR / 'AR_categorized.csv')
 
     df_topic = pd.read_parquet(DATA_DIR / f"descriptions_biobert_nomax_None_{128}.parquet") # 64 best for gpcrs
