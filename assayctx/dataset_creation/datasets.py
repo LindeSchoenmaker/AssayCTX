@@ -9,7 +9,10 @@ import os
 
 import chembl_downloader
 import pandas as pd
+import pystow
 from bindtype.papyrus import add_binding_type_to_papyrus
+
+# from papyrus_scripts.download import download_papyrus
 from papyrus_scripts.preprocess import (
     consume_chunks,
     keep_accession,
@@ -21,10 +24,8 @@ from papyrus_scripts.reader import read_papyrus, read_protein_set
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
-import pystow
-
-DATA_DIR = pystow.join("AssayCTX", "data")
-# download_papyrus(version='05.6', structures=True, only_pp=False, descriptors=None, outdir='./')
+DATA_DIR = pystow.join("assayctx_manuscript", "data")
+# download_papyrus(version='05.7', structures=True, only_pp=False, descriptors=None, outdir='./')
 
 
 def read_accessions_txt(files:list):
@@ -57,7 +58,7 @@ def get_data(accessions, protein_class, plusplus=False):
         protein_data = read_protein_set(source_path='./')
         filter_quality = keep_quality(data=sample_data, min_quality='medium')
         filter_class = keep_protein_class(filter_quality, protein_data, protein_class)
-        filter_source = keep_source(filter_class, source=['ChEMBL33'])
+        filter_source = keep_source(filter_class, source=['ChEMBL34'])
 
         return consume_chunks(filter_source, progress=True, total=60)
     else:
@@ -215,10 +216,10 @@ def filter_assays(df):
     return df
 
 if __name__ == "__main__":
-    class_dir = {'all': None, 'slcs': [{'l3': 'SLC superfamily of solute carriers'}], 'gpcrs': [{'l2': 'Family A G protein-coupled receptor'}], 'kinases': [{'l3': 'Protein Kinase'}]}
+    class_dir = {'gpcrs': [{'l2': 'Family A G protein-coupled receptor'}], 'kinases': [{'l3': 'Protein Kinase'}]}
     accessions = None
 
-    for name, protein_class in class_dir:
+    for name, protein_class in class_dir.items():
         if os.path.isfile(DATA_DIR / f'raw_{name}.csv'):
             df = read(name)
         else:
