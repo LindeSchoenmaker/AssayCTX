@@ -2,7 +2,7 @@ import os
 
 import polars as pl
 import pystow
-from simpletransformers.language_representation import RepresentationModel
+from sentence_transformers import SentenceTransformer
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -23,11 +23,8 @@ if __name__ == "__main__":
         .to_list()
     )
 
-    model = RepresentationModel(
-        model_type="bert", model_name="dmis-lab/biobert-base-cased-v1.2", use_cuda=True
-    )
-
-    word_vectors = model.encode_sentences(descriptions, combine_strategy="mean")
+    embedding_model = SentenceTransformer('dmis-lab/biobert-base-cased-v1.2')
+    word_vectors = embedding_model.encode(descriptions, show_progress_bar=False)
 
     # create a polars dataframe with the word vectors as a column
     df_emb = pl.DataFrame({"description": descriptions, "word_vectors": word_vectors})
