@@ -427,12 +427,8 @@ class BaseDs():
                 raise Exception("For multi-task, task should be defined")
             if self.task.split('_')[0] == 'topic':
                 topic = 'olr_cluster_None'
-                if target == 'gpcrs':
-                    file = BERT_DIR / f'descriptions_biobert_25092023_gpcrs_{self.task.split("_")[1]}.parquet'
-                elif target == 'kinases':
-                    file = BERT_DIR / f'descriptions_biobert_25092023_kinases_{self.task.split("_")[1]}.parquet'
-                elif target == 'slcs':
-                    file = BERT_DIR / f'descriptions_biobert_04062024_slcs_{self.task.split("_")[1]}.parquet'
+                file = BERT_DIR / f'descriptions_biobert_nomax_None_{self.task.split("_")[1]}.parquet'
+                
                 df_info = pd.read_parquet(file)
                 df_all = pd.merge(df,
                                   df_info,
