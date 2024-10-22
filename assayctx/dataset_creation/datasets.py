@@ -11,6 +11,8 @@ import chembl_downloader
 import pandas as pd
 import pystow
 from bindtype.papyrus import add_binding_type_to_papyrus
+
+# from papyrus_scripts.download import download_papyrus
 from papyrus_scripts.preprocess import (
     consume_chunks,
     keep_accession,
@@ -56,7 +58,7 @@ def get_data(accessions, protein_class, plusplus=False):
         protein_data = read_protein_set(source_path='./')
         filter_quality = keep_quality(data=sample_data, min_quality='medium')
         filter_class = keep_protein_class(filter_quality, protein_data, protein_class)
-        filter_source = keep_source(filter_class, source=['ChEMBL33'])
+        filter_source = keep_source(filter_class, source=['ChEMBL34'])
 
         return consume_chunks(filter_source, progress=True, total=60)
     else:

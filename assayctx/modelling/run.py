@@ -1,10 +1,15 @@
+import argparse
+import json
 import os
 import pickle
 from copy import deepcopy
+from itertools import chain
 
+import chembl_downloader
 import cuml
 import numpy as np
 import pandas as pd
+import pystow
 from prodec import ProteinDescriptors
 from qsprpred.data.sources.papyrus import Papyrus
 from qsprpred.data.utils.datafilters import RepeatsFilter
@@ -20,22 +25,14 @@ from qsprpred.extra.data.data import PCMDataSet
 from qsprpred.extra.data.utils.descriptor_utils.msa_calculator import ClustalMSA
 from qsprpred.extra.data.utils.descriptorcalculator import ProteinDescriptorCalculator
 from qsprpred.extra.data.utils.descriptorsets import ProDec
-from qsprpred.extra_gpu.models.custom_loss import MSEwithNaNLoss
-from qsprpred.extra_gpu.models.custom_metrics import NaNR2Score
-from qsprpred.extra_gpu.models.models import PyBoostModel
+from qsprpred.extra.gpu.models.pyboost import MSEwithNaNLoss, NaNR2Score, PyBoostModel
 from qsprpred.models.assessment_methods import CrossValAssessor, TestSetAssessor
 from qsprpred.models.early_stopping import EarlyStoppingMode
 from qsprpred.models.hyperparam_optimization import OptunaOptimization
 from qsprpred.models.tasks import TargetTasks
 from scorer import NaNR2Scorer
 from sklearn.model_selection import ShuffleSplit
-import pystow
-import json
-from itertools import chain
-import argparse
-
 from textblob import TextBlob
-import chembl_downloader
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-t",
@@ -46,11 +43,11 @@ parser.add_argument("-t",
                         'gpcrs', 'kinases', 'slcs'
                     ])
 parser.add_argument("-c",
-                    "--conditions",
+                    "--condition",
                     help="which model variants to run",
                     type=str,
                     choices=[
-                        'base', 'descriptor', 'MT'
+                        'control', 'descriptor', 'MT'
                     ])
 
 parser.add_argument("-s",
@@ -62,13 +59,14 @@ parser.add_argument("-s",
                     ])
 
 parser.add_argument("-r",
-                    "--repeat",
+                    "--repeats",
                     help="which repeat to run",
                     default=None,
                     nargs='+')
 
-DATA_DIR = pystow.join("AssayCTX", "data")
-QSPR_DIR = pystow.join("AssayCTX", "qspr")
+DATA_DIR = pystow.join("assayctx_manuscript", "data")
+DESC_DIR = pystow.join("AssayCTX", "data")
+QSPR_DIR = pystow.join("assayctx_manuscript", "qspr")
 BERT_DIR = pystow.join("AssayCTX", "bert")
 
 pdescs = ProteinDescriptors()
@@ -95,7 +93,7 @@ def write_fasta(ds_seq, target):
 
 
 def get_assay_fp(df, target):
-    with open(DATA_DIR / "chembl_fp_dict.txt", "r") as fp:
+    with open(DESC_DIR / "chembl_fp_dict.txt", "r") as fp:
         # Load the dictionary from the file
         fp_dict = json.load(fp)
     columns = [[f'{key}_{i}' for i in fp_dict[key].values()] for key in fp_dict]
@@ -181,7 +179,7 @@ def create_assay_bow(ds, target):
     unique_aids = df_assay_bow.unique()
 
     # load vectorizer
-    with open(DATA_DIR / 'chembl_vectorizer.pk', 'rb') as fn:
+    with open(DESC_DIR / 'chembl_vectorizer.pk', 'rb') as fn:
         vectorizer = pickle.load(fn)
 
     # get list of descriptions for each AID
@@ -205,7 +203,7 @@ def create_assay_emb(ds, target):
     df = ds.getDF()
     df_assay_emb = df['AID']
 
-    df_emb_org = pd.read_parquet(DATA_DIR / 'sentence_vectors.parquet')
+    df_emb_org = pd.read_parquet(DESC_DIR / 'sentence_vectors.parquet')
 
     df_emb = df_emb_org['word_vectors'].apply(pd.Series)
     df_emb['AID'] = df_emb_org['chembl_id']
@@ -219,7 +217,7 @@ def create_assay_emb_umap(ds, target):
     df = ds.getDF()
     df_assay_emb = df['AID']
 
-    df_emb_org = pd.read_parquet(DATA_DIR / 'sentence_vectors.parquet')
+    df_emb_org = pd.read_parquet(DESC_DIR / 'sentence_vectors.parquet')
 
     # UMAP plot for ChEMBL embeddings
     reducer = cuml.UMAP(n_components=5, n_neighbors=15, min_dist=0.1, random_state=42)
@@ -265,7 +263,7 @@ class BaseDs():
             df=df,
             smiles_col=self.smiles_col,
             target_props=target_props,
-            store_dir= QSPR_DIR / "data",
+            store_dir= str(QSPR_DIR / "data"),
             protein_col=self.target_col,
             protein_seq_provider=self.sequence_provider,
             overwrite=True)
@@ -273,7 +271,7 @@ class BaseDs():
         if os.path.isfile(
                 QSPR_DIR / f'data/{self.target}_alignment.aln-fasta.fasta'):
             self.alignment(ds,
-                           fname= QSPR_DIR / f'data/{self.target}_alignment.aln-fasta.fasta')
+                           f'{self.target}_alignment.aln-fasta.fasta')
         else:
             print('No MSA file supplied, allign the fasta file with sequences')
             write_fasta(self.ds_seq, self.target)  # only once
@@ -429,12 +427,8 @@ class BaseDs():
                 raise Exception("For multi-task, task should be defined")
             if self.task.split('_')[0] == 'topic':
                 topic = 'olr_cluster_None'
-                if target == 'gpcrs':
-                    file = BERT_DIR / f'descriptions_biobert_25092023_gpcrs_{self.task.split("_")[1]}.parquet'
-                elif target == 'kinases':
-                    file = BERT_DIR / f'descriptions_biobert_25092023_kinases_{self.task.split("_")[1]}.parquet'
-                elif target == 'slcs':
-                    file = BERT_DIR / f'descriptions_biobert_04062024_slcs_{self.task.split("_")[1]}.parquet'
+                file = BERT_DIR / f'descriptions_biobert_nomax_None_{self.task.split("_")[1]}.parquet'
+                
                 df_info = pd.read_parquet(file)
                 df_all = pd.merge(df,
                                   df_info,
@@ -457,7 +451,7 @@ class BaseDs():
                                               aggfunc='mean').reset_index()
             else:
                 df_info = pd.read_csv(
-                    DATA_DIR / 'assay_desc_mapping_mt.csv'
+                    DESC_DIR / 'assay_desc_mapping_mt.csv'
                 )
                 df_all = pd.merge(df,
                                   df_info,
@@ -612,7 +606,7 @@ def modelling(ds, optimize = False, split='random'):
         # see if optimal can be lower than 100 using early stopping
 
         model_base = PyBoostModel(
-            base_dir=QSPR_DIR / 'models/',
+            base_dir=str(QSPR_DIR / 'models/'),
             data=ds,
             name=f'{ds.name}{"_new_scaffold" if split == "scaffold" else ""}_PyBoost_base',
             parameters=parameters
@@ -621,13 +615,16 @@ def modelling(ds, optimize = False, split='random'):
         CrossValAssessor(mode=EarlyStoppingMode.RECORDING)(model_base)
         TestSetAssessor(mode=EarlyStoppingMode.OPTIMAL)(model_base)
 
+        model_base.fit(ds.X, ds.y)
+
+        save_params = parameters.copy()
+        save_params.update({'loss':  'MSEwithNaNLoss', 'metric': 'NaNR2Score', 'ntrees': model_base.earlyStopping.getEpochs()})
+        model_base.setParams(save_params)
+
         try:
             model_base.save()
         except:
             pass
-
-        model_base.saveParams({'ntrees': model_base.earlyStopping.getEpochs()})
-
 
 def molecule_split(df, smiles_col, target):
     repeat = 3
@@ -671,19 +668,19 @@ if __name__ == "__main__":
     # drop columns without pchembl value
     df = df.dropna(subset=['pchembl_value'])
 
-    for condition in args.conditions:
-        if condition == 'MT':
-            tasks = ['topic_128', 'topic_64', 'topic_32', 'topic_16'] # ['assay_type', 'curated_by', 'confidence_score', 'relationship_type']
-        else:
-            tasks = [None]
-        for task in tasks:
-            test_dataset = BaseDs(target = args.target, condition=condition, task=task, smiles_col='SMILES', target_col='accession', activity_col='pchembl_value', split=args.split)
+    condition = args.condition
+    if condition == 'MT':
+        tasks = ['topic_128', 'topic_64', 'topic_32', 'topic_16'] # ['assay_type', 'curated_by', 'confidence_score', 'relationship_type']
+    else:
+        tasks = [None]
+    for task in tasks:
+        test_dataset = BaseDs(target = args.target, condition=condition, task=task, smiles_col='SMILES', target_col='accession', activity_col='pchembl_value', split=args.split)
 
-            if not os.path.isfile(QSPR_DIR / f'data/{args.target}_{condition}{f"_{task}" if task else ""}_meta.json'):
-                print('Creating dataset')
+        if not os.path.isfile(QSPR_DIR / f'data/{args.target}_{condition}{f"_{task}" if task else ""}_meta.json'):
+            print('Creating dataset')
             test_dataset.create(df)
 
-            datasets = test_dataset.load(args.repeats)
+        datasets = test_dataset.load(args.repeats)
 
-            for dataset in datasets:
-                modelling(dataset, optimize=False, split=args.split)
+        for dataset in datasets:
+            modelling(dataset, optimize=False, split=args.split)

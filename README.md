@@ -6,6 +6,18 @@ Contains pipeline for building datasets, using the QSPRpred models tested for th
 
 ## Environment
 Scripts are compatible with QSPRPred tagged v2.1.0a0. 
+Create the environment using the following steps:
+    conda create -n assay_311 -c rapidsai -c conda-forge -c nvidia cuml=24.08 python=3.11 'cuda-version>=12.0,<=12.5' 'pytorch=*=*cuda*'
+    pip install cupy-cuda12x
+    pip install Py-Boost
+    pip install -U sentence-transformers
+    pip install git+https://github.com/CDDLeiden/QSPRpred.git@v2.1.0
+    pip install textblob
+    pip install chembl_downloader
+    pip install git+https://github.com/LindeSchoenmaker/BindingType.git
+    pip install polars
+    pip install Signature-pywrapper CDK-pywrapper PaDEL-pywrapper Mold2-pywrapper
+    pip install bertopic
 
 ## Dataset creation
 Datasets are created with unique protein-compound-assay as rows, only of type B & F
