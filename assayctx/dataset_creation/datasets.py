@@ -9,6 +9,7 @@ import os
 
 import chembl_downloader
 import pandas as pd
+import pystow
 from bindtype.papyrus import add_binding_type_to_papyrus
 from papyrus_scripts.preprocess import (
     consume_chunks,
@@ -21,10 +22,8 @@ from papyrus_scripts.reader import read_papyrus, read_protein_set
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
-import pystow
-
 DATA_DIR = pystow.join("AssayCTX", "data")
-# download_papyrus(version='05.6', structures=True, only_pp=False, descriptors=None, outdir='./')
+# download_papyrus(version='05.7', structures=True, only_pp=False, descriptors=None, outdir='./')
 
 
 def read_accessions_txt(files:list):
@@ -215,10 +214,10 @@ def filter_assays(df):
     return df
 
 if __name__ == "__main__":
-    class_dir = {'all': None, 'slcs': [{'l3': 'SLC superfamily of solute carriers'}], 'gpcrs': [{'l2': 'Family A G protein-coupled receptor'}], 'kinases': [{'l3': 'Protein Kinase'}]}
+    class_dir = {'slcs': [{'l3': 'SLC superfamily of solute carriers'}], 'all': None, 'gpcrs': [{'l2': 'Family A G protein-coupled receptor'}], 'kinases': [{'l3': 'Protein Kinase'}]}
     accessions = None
 
-    for name, protein_class in class_dir:
+    for name, protein_class in class_dir.items():
         if os.path.isfile(DATA_DIR / f'raw_{name}.csv'):
             df = read(name)
         else:
