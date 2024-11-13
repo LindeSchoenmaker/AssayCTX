@@ -1,3 +1,6 @@
+from qsprpred.data.sources.papyrus import Papyrus
+
+print('imported papyrus')
 import argparse
 import json
 import os
@@ -11,7 +14,6 @@ import numpy as np
 import pandas as pd
 import pystow
 from prodec import ProteinDescriptors
-from qsprpred.data.sources.papyrus import Papyrus
 from qsprpred.data.utils.datafilters import RepeatsFilter
 from qsprpred.data.utils.datasplitters import ManualSplit, ScaffoldSplit
 from qsprpred.data.utils.descriptorcalculator import (
@@ -40,7 +42,7 @@ parser.add_argument("-t",
                     help="which target to model",
                     type=str,
                     choices=[
-                        'gpcrs', 'kinases', 'slcs'
+                        'gpcrs', 'kinases', 'slcs', 'rtks'
                     ])
 parser.add_argument("-c",
                     "--condition",
@@ -48,7 +50,8 @@ parser.add_argument("-c",
                     type=str,
                     choices=[
                         'control', 'descriptor', 'MT'
-                    ])
+                    ],
+                    nargs='+')
 
 parser.add_argument("-s",
                     "--split",
@@ -64,9 +67,9 @@ parser.add_argument("-r",
                     default=None,
                     nargs='+')
 
-DATA_DIR = pystow.join("assayctx_manuscript", "data")
+DATA_DIR = pystow.join("AssayCTX", "data")
 DESC_DIR = pystow.join("AssayCTX", "data")
-QSPR_DIR = pystow.join("assayctx_manuscript", "qspr")
+QSPR_DIR = pystow.join("AssayCTX", "qspr")
 BERT_DIR = pystow.join("AssayCTX", "bert")
 
 pdescs = ProteinDescriptors()
@@ -114,7 +117,7 @@ def get_assay_fp(df, target):
 
 
 def query(chembl_aids, info='all'):
-    chembl_downloader.download_extract_sqlite()
+    # chembl_downloader.download_extract_sqlite()
     if info == 'all':
         sql = f"""
         SELECT
@@ -263,17 +266,18 @@ class BaseDs():
             df=df,
             smiles_col=self.smiles_col,
             target_props=target_props,
-            store_dir= str(QSPR_DIR / "data"),
+            store_dir=str(QSPR_DIR / "data"),
             protein_col=self.target_col,
             protein_seq_provider=self.sequence_provider,
             overwrite=True)
 
-        if os.path.isfile(
-                QSPR_DIR / f'data/{self.target}_alignment.aln-fasta.fasta'):
-            self.alignment(ds,
-                           f'{self.target}_alignment.aln-fasta.fasta')
+        if os.path.isfile(QSPR_DIR /
+                          f'data/{self.target}_alignment.aln-fasta.fasta'):
+            self.alignment(ds, f'{self.target}_alignment.aln-fasta.fasta')
         else:
-            print('No MSA file supplied, allign the fasta file with sequences')
+            print(
+                'No MSA file supplied, allign the fasta file with sequences. Using: https://www.ebi.ac.uk/jdispatcher/msa/clustalo'
+            )
             write_fasta(self.ds_seq, self.target)  # only once
             return
 
@@ -299,14 +303,16 @@ class BaseDs():
             create_assay_fp(ds, self.target)
             create_assay_emb(ds, self.target)
             create_assay_emb_umap(ds, self.target)
-        if self.condition == 'descriptor' and not os.path.isfile(QSPR_DIR / f'{self.target}_assay_bow.csv'):
+        if self.condition == 'descriptor' and not os.path.isfile(
+                QSPR_DIR / f'{self.target}_assay_bow.csv'):
             create_assay_bow(ds, self.target)
 
         return ds
 
-    def load(self, repeats = [0]):
+    def load(self, repeats=[0]):
         ds = PCMDataSet.fromFile(
-            QSPR_DIR / f'data/{self.target}_{self.condition}{f"_{self.task}" if self.task else ""}_df.pkl'
+            QSPR_DIR /
+            f'data/{self.target}_{self.condition}{f"_{self.task}" if self.task else ""}_df.pkl'
         )
         complete_datasets = []
         final_datasets = []
@@ -332,47 +338,49 @@ class BaseDs():
                         self.get_split(complete_dataset, i)))
 
         return final_datasets
-    
-
 
     def get_assay_desc(self, ds, desc):
         ds_desc = deepcopy(ds)
         if desc == 'AFP':
             ds_desc.name = f'{ds.name}_AFP'
             assay_fp = DataFrameDescriptorSet(
-                pd.read_csv(QSPR_DIR / f'data/{self.target}_assay_fp.csv').
-                set_index('QSPRID'))
+                pd.read_csv(
+                    QSPR_DIR /
+                    f'data/{self.target}_assay_fp.csv').set_index('QSPRID'))
             calc_assay_fp = CustomDescriptorsCalculator(desc_sets=[assay_fp])
             ds_desc.addCustomDescriptors(calc_assay_fp, recalculate=True)
         if desc == 'AEMB':
             ds_desc.name = f'{ds.name}_AEMB'
             assay_emb = DataFrameDescriptorSet(
-                pd.read_csv(QSPR_DIR / f'data/{self.target}_assay_emb.csv').
-                set_index('QSPRID'))
+                pd.read_csv(
+                    QSPR_DIR /
+                    f'data/{self.target}_assay_emb.csv').set_index('QSPRID'))
             calc_assay_emb = CustomDescriptorsCalculator(desc_sets=[assay_emb])
             ds_desc.addCustomDescriptors(calc_assay_emb, recalculate=True)
         if desc == 'AUMAP':
             ds_desc.name = f'{ds.name}_AUMAP'
             assay_emb = DataFrameDescriptorSet(
-                pd.read_csv(QSPR_DIR / f'data/{self.target}_assay_emb_umap.csv').
-                set_index('QSPRID'))
+                pd.read_csv(QSPR_DIR / f'data/{self.target}_assay_emb_umap.csv'
+                            ).set_index('QSPRID'))
             calc_assay_emb = CustomDescriptorsCalculator(desc_sets=[assay_emb])
             ds_desc.addCustomDescriptors(calc_assay_emb, recalculate=True)
         if desc == 'ABOWS':
             ds_desc.name = f'{ds.name}_ABOWS'
             assay_bow = DataFrameDescriptorSet(
-                pd.read_csv(QSPR_DIR / f'data/{self.target}_assay_bow_stemming.csv'
-                            ).set_index('QSPRID'))
+                pd.read_csv(
+                    QSPR_DIR /
+                    f'data/{self.target}_assay_bow_stemming.csv').set_index(
+                        'QSPRID'))
             calc_assay_bow = CustomDescriptorsCalculator(desc_sets=[assay_bow])
             ds_desc.addCustomDescriptors(calc_assay_bow, recalculate=True)
 
         return ds_desc
-    
-    
+
     def apply_splits(self, ds):
         df_random = pd.DataFrame()
         repeat = 3
-        with open(DATA_DIR / f"{self.target}_{self.split}_split.json", "r") as fp:
+        with open(DATA_DIR / f"{self.target}_{self.split}_split.json",
+                  "r") as fp:
             # Load the dictionary from the file
             split_dict = json.load(fp)
         for i in range(repeat):
@@ -385,12 +393,14 @@ class BaseDs():
 
         df_random = df_random.reset_index()
         df_random.to_csv(
-            QSPR_DIR / f'data/{self.target}_{self.condition}{f"_{self.task}" if self.task else ""}_splits{"_scaffold" if self.split == "scaffold" else ""}.csv',
+            QSPR_DIR /
+            f'data/{self.target}_{self.condition}{f"_{self.task}" if self.task else ""}_splits{"_scaffold" if self.split == "scaffold" else ""}.csv',
             index=False)
 
     def get_split(self, ds, i):
         df_split = pd.read_csv(
-            QSPR_DIR / f'data/{self.target}_{self.condition}{f"_{self.task}" if self.task else ""}_splits{"_scaffold" if self.split == "scaffold" else ""}.csv'
+            QSPR_DIR /
+            f'data/{self.target}_{self.condition}{f"_{self.task}" if self.task else ""}_splits{"_scaffold" if self.split == "scaffold" else ""}.csv'
         )
 
         split = ManualSplit(df_split[f'split_{i}'], True, False)
@@ -427,8 +437,8 @@ class BaseDs():
                 raise Exception("For multi-task, task should be defined")
             if self.task.split('_')[0] == 'topic':
                 topic = 'olr_cluster_None'
-                file = BERT_DIR / f'descriptions_biobert_nomax_None_{self.task.split("_")[1]}.parquet'
-                
+                file = BERT_DIR / f'descriptions_biobert_None_{self.task.split("_")[1]}.parquet'
+
                 df_info = pd.read_parquet(file)
                 df_all = pd.merge(df,
                                   df_info,
@@ -437,8 +447,16 @@ class BaseDs():
                                   how='left',
                                   indicator=True)
                 if len(df_all[df_all['_merge'] == 'left_only']) > 0:
-                    print(f"{len(df_all[df_all['_merge'] == 'left_only'])} datapoints excluded because no chembl description")
+                    print(
+                        f"{len(df_all[df_all['_merge'] == 'left_only'])} datapoints excluded because no chembl description"
+                    )
                 df_all = df_all.dropna(subset=[topic])
+                # add topic to category if in top 100
+                n = 100
+                if df_all[topic].nunique() > n:
+                    largest_topics = df_all[topic].value_counts().head(n).index.tolist()
+                    df_all.loc[~df_all[topic].isin(largest_topics), topic] = 'other'
+                # turn into string
                 df_all[topic] = 'Topic' + df_all[topic].astype(str)
                 self.tasks = df_all[topic].unique()
                 target_props = [{
@@ -450,9 +468,7 @@ class BaseDs():
                                               values='pchembl_value',
                                               aggfunc='mean').reset_index()
             else:
-                df_info = pd.read_csv(
-                    DESC_DIR / 'assay_desc_mapping_mt.csv'
-                )
+                df_info = pd.read_csv(DESC_DIR / 'assay_desc_mapping_mt.csv')
                 df_all = pd.merge(df,
                                   df_info,
                                   left_on='AID',
@@ -608,7 +624,7 @@ def modelling(ds, optimize = False, split='random'):
         model_base = PyBoostModel(
             base_dir=str(QSPR_DIR / 'models/'),
             data=ds,
-            name=f'{ds.name}{"_new_scaffold" if split == "scaffold" else ""}_PyBoost_base',
+            name=f'{ds.name}{"_scaffold" if split == "scaffold" else ""}_PyBoost_base',
             parameters=parameters
         )
 
@@ -643,7 +659,7 @@ def molecule_split(df, smiles_col, target):
 def scaffold_split(ds, smiles_col, target):
     repeat = 3
     split_dict = {}
-    split = ScaffoldSplit(dataset=ds, scaffold=Murcko(), test_fraction=0.1)
+    split = ScaffoldSplit(dataset=ds, scaffold=Murcko(), test_fraction=0.1, stratify = True)
     for i in range(repeat):
         ds.split(split)
         ds.saveSplit()
@@ -654,6 +670,7 @@ def scaffold_split(ds, smiles_col, target):
     with open(DATA_DIR / f'{target}_scaffold_split.json', 'w') as f:
         json.dump(split_dict, f)
 
+
 if __name__ == "__main__":
     os.makedirs(QSPR_DIR / 'data', exist_ok=True)
 
@@ -663,24 +680,35 @@ if __name__ == "__main__":
     target_col = 'accession'
 
     # Load in the data
-    df = pd.read_csv(DATA_DIR / f'filtered_assays_split_{args.target}.csv', sep=',')
+    df = pd.read_csv(DATA_DIR / f'filtered_assays_split_{args.target}.csv',
+                     sep=',')
 
     # drop columns without pchembl value
     df = df.dropna(subset=['pchembl_value'])
 
-    condition = args.condition
-    if condition == 'MT':
-        tasks = ['topic_128', 'topic_64', 'topic_32', 'topic_16'] # ['assay_type', 'curated_by', 'confidence_score', 'relationship_type']
-    else:
-        tasks = [None]
-    for task in tasks:
-        test_dataset = BaseDs(target = args.target, condition=condition, task=task, smiles_col='SMILES', target_col='accession', activity_col='pchembl_value', split=args.split)
+    conditions = args.condition
+    for condition in conditions:
+        if condition == 'MT':
+            tasks = ['topic_128', 'topic_64', 'topic_32', 'topic_16'] # ['assay_type', 'curated_by', 'confidence_score', 'relationship_type']
+        else:
+            tasks = [None]
+        for task in tasks:
+            test_dataset = BaseDs(target=args.target,
+                                condition=condition,
+                                task=task,
+                                smiles_col='SMILES',
+                                target_col='accession',
+                                activity_col='pchembl_value',
+                                split=args.split)
 
-        if not os.path.isfile(QSPR_DIR / f'data/{args.target}_{condition}{f"_{task}" if task else ""}_meta.json'):
-            print('Creating dataset')
-            test_dataset.create(df)
+            if not os.path.isfile(
+                    QSPR_DIR /
+                    f'data/{args.target}_{condition}{f"_{task}" if task else ""}_meta.json'
+            ):
+                print('Creating dataset')
+                test_dataset.create(df)
 
-        datasets = test_dataset.load(args.repeats)
+            datasets = test_dataset.load(args.repeats)
 
-        for dataset in datasets:
-            modelling(dataset, optimize=False, split=args.split)
+            for dataset in datasets:
+                modelling(dataset, optimize=False, split=args.split)

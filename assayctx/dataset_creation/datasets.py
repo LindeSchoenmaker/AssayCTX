@@ -191,7 +191,7 @@ def check_substructure(smiles, p):
 
 
 def query(chembl_aids):
-    chembl_downloader.download_extract_sqlite()
+    # chembl_downloader.download_extract_sqlite()
     sql = f"""
     SELECT
         ASSAYS.chembl_id,
@@ -216,7 +216,7 @@ def filter_assays(df):
     return df
 
 if __name__ == "__main__":
-    class_dir = {'slcs': [{'l3': 'SLC superfamily of solute carriers'}], 'all': None, 'gpcrs': [{'l2': 'Family A G protein-coupled receptor'}], 'kinases': [{'l3': 'Protein Kinase'}]}
+    class_dir = {'slcs': [{'l3': 'SLC superfamily of solute carriers'}], 'gpcrs': [{'l2': 'Family A G protein-coupled receptor'}], 'rtks': [{'l4': 'TK protein kinase group'}]}
     accessions = None
 
     for name, protein_class in class_dir.items():
@@ -226,7 +226,7 @@ if __name__ == "__main__":
             df = get_data(accessions, protein_class, plusplus=False)
             save(df, name)
 
-        if os.path.isfile(DATA_DIR / 'filtered_{name}.csv'):
+        if os.path.isfile(DATA_DIR / f'filtered_{name}.csv'):
             df = pd.read_csv(DATA_DIR / f'filtered_{name}.csv')
         else:
             df = filter_compounds(df, name)
