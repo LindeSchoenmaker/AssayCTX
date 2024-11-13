@@ -11,7 +11,7 @@ from cuml.manifold import UMAP
 from sentence_transformers import SentenceTransformer
 
 # # Choose gpus to use
-os.environ["CUDA_VISIBLE_DEVICES"] = "5"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 # Reduce priority of process
 os.nice(15)
