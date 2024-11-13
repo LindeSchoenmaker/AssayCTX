@@ -18,10 +18,10 @@ def purity_score(y_true, y_pred):
 def cluster_size(target= None):
     df_info = pd.DataFrame()
     for min_cluster_size in [16, 32, 64, 128]:
-        df = pd.read_parquet(DATA_DIR / f"descriptions_biobert_nomax_{target}_{min_cluster_size}.parquet")
+        df = pd.read_parquet(DATA_DIR / f"descriptions_biobert_{target}_{min_cluster_size}.parquet")
         dataframes = [df]
         if target:
-            df_control = pd.read_parquet(DATA_DIR / f"descriptions_biobert_nomax_None_{min_cluster_size}.parquet")
+            df_control = pd.read_parquet(DATA_DIR / f"descriptions_biobert_None_{min_cluster_size}.parquet")
             df_control = df_control[df_control['chembl_id'].isin(df.chembl_id.to_list())]
             dataframes.append(df_control)
         
@@ -58,10 +58,10 @@ def cluster_size(target= None):
 def purity(target):
     df_info = pd.DataFrame()
     for min_cluster_size in [16, 32, 64, 128]:
-        df = pd.read_parquet(DATA_DIR / f"descriptions_biobert_nomax_{target}_{min_cluster_size}.parquet")
+        df = pd.read_parquet(DATA_DIR / f"descriptions_biobert_{target}_{min_cluster_size}.parquet")
         dataframes = [df]
         if target:
-            df_control = pd.read_parquet(DATA_DIR / f"descriptions_biobert_nomax_None_{min_cluster_size}.parquet")
+            df_control = pd.read_parquet(DATA_DIR / f"descriptions_biobert_None_{min_cluster_size}.parquet")
             df_control = df_control[df_control['chembl_id'].isin(df.chembl_id.to_list())]
             dataframes.append(df_control)
         
@@ -95,7 +95,7 @@ def purity(target):
     df_info.to_csv(DATA_DIR / f'cluster_purity_topics_{target}.csv')
 
 def topic_words(target, supervised, min_size):
-    topic_model = BERTopic.load(BERT_DIR / f"saved_topicmodel_biobert_nomax_{target}_{supervised}_{min_size}_dir")
+    topic_model = BERTopic.load(BERT_DIR / f"saved_topicmodel_biobert_{target}_{supervised}_{min_size}_dir")
     dic1 = topic_model.get_topics()
     dic2 = {k:[x[0] for x in v] for k,v in dic1.items()}
     df_topic_words = pd.DataFrame.from_dict(dic2, orient='index')

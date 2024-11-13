@@ -20,4 +20,4 @@ if __name__ == "__main__":
     df = pd.read_csv(DATA_DIR / "assay_desc_mapping_fb.csv", usecols=['description'])
     corpus = df.description
     vectors = vectorizer.transform(corpus)
-    print(f'average number of bits per description{vectors.nnz/vectors.shape[0]}')
+    print(f'average number of bits per description: {vectors.nnz/vectors.shape[0]}')

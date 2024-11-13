@@ -8,7 +8,7 @@ os.environ['PYSTOW_HOME'] = "/zfsdata/data/linde"
 DATA_DIR = pystow.join("AssayCTX", "data")
 
 def calc_scores(df, i, assay_type, column = 'meta_target', supervised='olr_cluster_None'):
-    df_topic = pd.read_parquet(DATA_DIR / f"descriptions_biobert_nomax_None_{i}.parquet")
+    df_topic = pd.read_parquet(DATA_DIR / f"descriptions_biobert_None_{i}.parquet")
     print(len(df_topic))
     df_topic = df_topic[df_topic['chembl_id'].isin(df.chembl_id.to_list())]
 
@@ -28,7 +28,7 @@ def calc_scores(df, i, assay_type, column = 'meta_target', supervised='olr_clust
 if __name__ == "__main__":   
     df = pd.read_csv(DATA_DIR / 'AR_categorized.csv')
 
-    df_topic = pd.read_parquet(DATA_DIR / f"descriptions_biobert_nomax_None_{128}.parquet") # 64 best for gpcrs
+    df_topic = pd.read_parquet(DATA_DIR / f"descriptions_biobert_None_{128}.parquet") # 64 best for gpcrs
     df_topic = df_topic[df_topic['chembl_id'].isin(df.chembl_id.to_list())]
 
     df_topic = df_topic[['chembl_id', 'cluster_None', 'olr_cluster_None']] #, 'olr_cluster_assay_type', 'olr_cluster_bao_format', 'olr_cluster_standard_type']]
@@ -37,12 +37,12 @@ if __name__ == "__main__":
 
     df_B = df.loc[df['assay_type'] == 'B']
     df_F = df.loc[df['assay_type'] == 'F']
-    print(metrics.completeness_score(df_B['detection_technology'], df_B['olr_cluster_None']))
+    print(metrics.completeness_score(df_B['standard_type'], df_B['olr_cluster_None']))
     print(metrics.completeness_score(df_F['meta_target'], df_F['olr_cluster_None']))
 
     df_org = pd.read_csv(DATA_DIR / 'AR_categorized.csv')
 
-    for assay_type, key in {'F': 'meta_target', 'B': 'detection_technology'}.items():
+    for assay_type, key in {'F': 'meta_target', 'B': 'standard_type'}.items():
         print(assay_type)
         for i in [16, 32, 64, 128]:
             print(i)
