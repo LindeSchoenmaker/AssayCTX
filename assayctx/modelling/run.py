@@ -10,6 +10,7 @@ from itertools import chain
 
 import chembl_downloader
 import cuml
+import cupy
 import numpy as np
 import pandas as pd
 import pystow
@@ -59,7 +60,8 @@ parser.add_argument("-s",
                     type=str,
                     choices=[
                         'random', 'scaffold'
-                    ])
+                    ],
+                    nargs='+')
 
 parser.add_argument("-r",
                     "--repeats",
@@ -318,7 +320,7 @@ class BaseDs():
         final_datasets = []
         # if assay descriptor add desscriptors
         if self.condition == 'descriptor':
-            for desc in ['AEMB']:  # 'AFP', 'AEMB', 'ABOW', 'ABOWS'
+            for desc in ['AFP', 'AEMB', 'ABOWS']:  # 'AFP', 'AEMB', 'ABOW', 'ABOWS'
                 ds_desc = self.get_assay_desc(ds, desc)
                 ds_desc.filter([RepeatsFilter(keep=False)
                                 ])  # remove rows with non unique descriptors
@@ -448,9 +450,9 @@ class BaseDs():
                                   indicator=True)
                 if len(df_all[df_all['_merge'] == 'left_only']) > 0:
                     print(
-                        f"{len(df_all[df_all['_merge'] == 'left_only'])} datapoints excluded because no chembl description"
+                        f"{len(df_all[df_all['_merge'] == 'left_only'])} datapoints put into category 'other' because no chembl description"
                     )
-                df_all = df_all.dropna(subset=[topic])
+                df_all[topic] = df_all[topic].fillna(value = 'other', axis = 1)
                 # add topic to category if in top 100
                 n = 100
                 if df_all[topic].nunique() > n:
@@ -679,13 +681,6 @@ if __name__ == "__main__":
     activity_col = 'pchembl_value'
     target_col = 'accession'
 
-    # Load in the data
-    df = pd.read_csv(DATA_DIR / f'filtered_assays_split_{args.target}.csv',
-                     sep=',')
-
-    # drop columns without pchembl value
-    df = df.dropna(subset=['pchembl_value'])
-
     conditions = args.condition
     for condition in conditions:
         if condition == 'MT':
@@ -693,22 +688,35 @@ if __name__ == "__main__":
         else:
             tasks = [None]
         for task in tasks:
-            test_dataset = BaseDs(target=args.target,
-                                condition=condition,
-                                task=task,
-                                smiles_col='SMILES',
-                                target_col='accession',
-                                activity_col='pchembl_value',
-                                split=args.split)
+            for split in args.split:
+                try:
+                    test_dataset = BaseDs(target=args.target,
+                                        condition=condition,
+                                        task=task,
+                                        smiles_col='SMILES',
+                                        target_col='accession',
+                                        activity_col='pchembl_value',
+                                        split=split)
 
-            if not os.path.isfile(
-                    QSPR_DIR /
-                    f'data/{args.target}_{condition}{f"_{task}" if task else ""}_meta.json'
-            ):
-                print('Creating dataset')
-                test_dataset.create(df)
+                    if not os.path.isfile(
+                            QSPR_DIR /
+                            f'data/{args.target}_{condition}{f"_{task}" if task else ""}_meta.json'
+                    ):
+                        print('Creating dataset')
+                        
+                        # Load in the data
+                        df = pd.read_csv(DATA_DIR / f'filtered_assays_split_{args.target}.csv',
+                                        sep=',')
 
-            datasets = test_dataset.load(args.repeats)
+                        # drop columns without pchembl value
+                        df = df.dropna(subset=['pchembl_value'])
+                        test_dataset.create(df)
 
-            for dataset in datasets:
-                modelling(dataset, optimize=False, split=args.split)
+                    datasets = test_dataset.load(args.repeats)
+
+                    for dataset in datasets:
+                        modelling(dataset, optimize=False, split=split)
+                except cupy.cuda.memory.OutOfMemoryError:
+                    print(args.target, condition, task)
+
+
