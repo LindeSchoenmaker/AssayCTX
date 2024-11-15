@@ -371,7 +371,7 @@ class BaseDs():
             assay_bow = DataFrameDescriptorSet(
                 pd.read_csv(
                     QSPR_DIR /
-                    f'data/{self.target}_assay_bow_stemming.csv').set_index(
+                    f'data/{self.target}_assay_bow.csv').set_index(
                         'QSPRID'))
             calc_assay_bow = CustomDescriptorsCalculator(desc_sets=[assay_bow])
             ds_desc.addCustomDescriptors(calc_assay_bow, recalculate=True)
@@ -452,7 +452,7 @@ class BaseDs():
                     print(
                         f"{len(df_all[df_all['_merge'] == 'left_only'])} datapoints put into category 'other' because no chembl description"
                     )
-                df_all[topic] = df_all[topic].fillna(value = 'other', axis = 1)
+                df_all[topic] = df_all[topic].fillna(value = 'other')
                 # add topic to category if in top 100
                 n = 100
                 if df_all[topic].nunique() > n:
