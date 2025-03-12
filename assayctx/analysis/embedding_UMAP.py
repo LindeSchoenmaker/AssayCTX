@@ -19,13 +19,13 @@ def textblob_tokenizer(str_input):
 
 
 def UMAP_main_text():
-    columns = ['assay_type', 'assay_tax_id', 'confidence_score', 'curated_by', 'standard_type', 'bao_format']
-    names = {'assay_type': 'Assay type', 'assay_tax_id': 'Taxonomy', 'confidence_score': 'Confidence score', 'curated_by': 'Curation'
-             , 'standard_type': 'Standard type', 'bao_format': 'Format'}
+    columns = ['assay_type', 'assay_tax_id', 'confidence_score', 'standard_type', 'bao_format']
+    names = {'assay_type': 'Assay type', 'assay_tax_id': 'Taxonomy', 'confidence_score': 'Confidence score'
+             , 'standard_type': 'Standard type', 'bao_format': 'BAO format'}
 
     addition[columns] = helper[columns]
 
-    plt.figure(figsize=(10, 9), dpi=600)
+    plt.figure(figsize=(9, 8), dpi=300)
     plt.subplots_adjust(hspace=0.5)
 
 
@@ -78,6 +78,8 @@ def UMAP_main_text():
             labels = ['Assay', 'Organism-based', 'Cell-based', 'Tissue-based', 'Single protein']
         elif color_by == 'assay_tax_id':
             labels = ['M. musculus', 'R. norvegicus', 'S. aureus', 'H. sapiens', 'Not defined']
+        elif color_by == 'standard_type':
+            labels = ['Activity', '$IC_{50}$', 'Inhibition', '$K_{i}$', 'MIC']
         else:
             labels = None
         ax.legend(fontsize=8, handletextpad=0, loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=2, bbox_transform=ax.transAxes)

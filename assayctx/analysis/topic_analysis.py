@@ -100,16 +100,16 @@ def purity(target):
     df_info_p.sort_values(by=['supervised'], inplace=True)
     df_info_p.to_csv(DATA_DIR / f'cluster_purity_topics_{target}.csv')
 
-    mean = df_info.groupby(['min_cluster', 'metric', 'outlier_reduction']).mean()['info']
-    std = df_info.groupby(['min_cluster', 'metric', 'outlier_reduction']).std()['info']
+    mean = df_info.groupby(['min_cluster', 'metric', 'outlier_reduction'])['info'].mean()
+    std = df_info.groupby(['min_cluster', 'metric', 'outlier_reduction'])['info'].std()
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(7, 5), dpi=300)
     ax = mean.unstack(['min_cluster']).plot(kind='bar', yerr=std.unstack(['min_cluster']), xlabel='', color=["#5790fc", "#f89c20", "#e42536", "#964a8b", "#9c9ca1", "#7a21dd"])
-    ax.set_xticks(ticks=range(6), labels=['no olr\nassay type', 'olr\nassay type', 'no olr\nboa format', 'olr\nboa format', 'no olr\nstandard type', 'olr\nstandard type'], size=9, rotation=0)
-    ax.legend(title='Minimum size')
+    ax.set_xticks(ticks=range(6), labels=['no OLR\nassay type', 'OLR\nassay type', 'no OLR\nBAO format', 'ORL\nBAO format', 'no OLR\nstandard type', 'OLR\nstandard type'], size=9, rotation=0)
+    ax.legend(title='Minimum size', fontsize=14)
     ax.set_ylabel('Purity')
     plt.tight_layout()
-    plt.savefig('purity_norm_barplot.png')
+    plt.savefig('Figure2.png')
 
 
 def topic_words(target, supervised, min_size):
@@ -121,5 +121,5 @@ def topic_words(target, supervised, min_size):
     df_top5.to_csv(f'cluster_words_topics_{target}.csv')
 
 if __name__ == "__main__":
-    cluster_size(target=None)
+    # cluster_size(target=None)
     purity(target=None)

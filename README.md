@@ -19,6 +19,26 @@ And run
     python assayctx/dataset_creation/description_loader.py
     python assayctx/dataset_creation/datasets.py
 
+### Assay embedding and clustering
+To create assay embeddings and do the assay grouping you need an environment with python=3.11 and the following packages:
+    pip install \
+    --extra-index-url=https://pypi.nvidia.com \
+    cuml-cu12==24.10.*
+    pip install bertopic
+    pip install -U sentence-transformers
+    pip install polars
+    pip install textblob
+    python -m textblob.download_corpora
+    pip install matplotlib
+    pip install pystow
+    pip install seaborn
+
+The following functions are related
+python assayctx/descriptors/embeddings.py           #for creating BioBERT embeddings
+python assayctx/analysis/embedding_UMAP.py          #for plotting assay embeddings using UMAP
+python assayctx/descriptors/topics.py               #for creating topic clusters
+python assayctx/descriptors/topic_information.py    #for retrieving topic information (number of assay groups, assay describing words, assigning a description to a topic)
+
 
 ### Complete environment
 The following describes how to create an environment with all the packages used in this repository. Take note that some adjustments might be necessary based on your CUDA version.
