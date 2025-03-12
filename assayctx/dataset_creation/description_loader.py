@@ -48,12 +48,12 @@ df = chembl_downloader.query(sql, version='34')
 
 # plot length
 df['desc_length']  = df['description'].str.len()
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(9, 5), dpi=300)
 df.hist(column='desc_length', bins=100, ax=ax)
-ax.set_ylabel("Frequency")
+ax.set_ylabel("Frequency", fontsize=14)
 ax.set_title("")
 fig.tight_layout()
-fig.savefig(FIG_DIR / 'desc_length.png')
+fig.savefig(FIG_DIR / 'SIFigure1.png')
 
 # save data
 df.to_csv(DATA_DIR / "assay_desc_mapping_fb_info.csv", index=False)

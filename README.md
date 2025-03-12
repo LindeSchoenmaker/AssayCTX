@@ -6,18 +6,38 @@ Contains pipeline for building datasets, using the QSPRpred models tested for th
 
 ## Environment
 Scripts are compatible with QSPRPred tagged v2.1.0a0. 
+
+### Dataset creation
+Data for validation can be extracted from ChEMBL and papyrus. 
+
+To reproduce create an environment with python=3.11:
+    pip install git+https://github.com/CDDLeiden/QSPRpred.git@v2.1.0
+    pip install chembl_downloader
+    pip install git+https://github.com/LindeSchoenmaker/BindingType.git
+
+And run
+    python assayctx/dataset_creation/description_loader.py
+    python assayctx/dataset_creation/datasets.py
+
+
+### Complete environment
+The following describes how to create an environment with all the packages used in this repository. Take note that some adjustments might be necessary based on your CUDA version.
 Create the environment using the following steps:
-    conda create -n assay_311 -c rapidsai -c conda-forge -c nvidia cuml=24.08 python=3.11 'cuda-version>=12.0,<=12.5' 'pytorch=*=*cuda*'
-    pip install cupy-cuda12x
-    pip install Py-Boost
+    conda create --name assay_311_new python=3.11
+    pip install \
+    --extra-index-url=https://pypi.nvidia.com \
+    cuml-cu12==24.10.*
+    pip install bertopic
     pip install -U sentence-transformers
+    pip install polars
+    pip install Py-Boost
     pip install git+https://github.com/CDDLeiden/QSPRpred.git@v2.1.0
     pip install textblob
     pip install chembl_downloader
     pip install git+https://github.com/LindeSchoenmaker/BindingType.git
-    pip install polars
     pip install Signature-pywrapper CDK-pywrapper PaDEL-pywrapper Mold2-pywrapper
-    pip install bertopic
+
+    python -m textblob.download_corpora
 
 ## Dataset creation
 Datasets are created with unique protein-compound-assay as rows, only of type B & F

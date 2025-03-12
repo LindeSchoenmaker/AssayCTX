@@ -100,13 +100,17 @@ def explode(x, level):
     return x
 
 
-def separate_aid(data):
+def separate_aid(data, name):
     """From protein-compound row with average pchembl of multiple assays, to multiple rows of each assay with measured pchembl
 
     In papyrus data of a compound-receptor pair from multiple assays is averaged, for our purposes the assays need to be separated.
     """
     if len(data.index) == 0:
         return data
+    columns = ['pchembl_value', 'accession', 'SMILES', 'source', 'CID', 'Quality', 'all_doc_ids', 'Activity_class', 'type_IC50', 'type_EC50', 'type_KD', 'type_Ki', 'type_other']
+
+    if name == 'all':
+        columns = ['pchembl_value', 'accession', 'SMILES', 'Quality']
 
     # separate multiple studies into own rows
     data['AID'] = data.AID.str.split(pat = ';')
@@ -117,7 +121,6 @@ def separate_aid(data):
     res.columns = cols + ['level', 'AID']
 
     # if multiple values in column turn into list
-    columns = ['pchembl_value', 'accession', 'SMILES', 'source', 'CID', 'Quality', 'all_doc_ids', 'Activity_class', 'type_IC50', 'type_EC50', 'type_KD', 'type_Ki', 'type_other']
     res[columns] = res[columns].applymap(lambda x: split_cells(x))
 
     # add right column value to AID (use level to index)
@@ -128,12 +131,14 @@ def separate_aid(data):
 
     res = res.drop(labels = ['level'], axis=1)
 
-    res = res.astype(dict.fromkeys(['type_IC50', 'type_EC50', 'type_KD', 'type_Ki', 'type_other'], 'string'))
+    if name != 'all':
+        res = res.astype(dict.fromkeys(['type_IC50', 'type_EC50', 'type_KD', 'type_Ki', 'type_other'], 'string'))
 
     # Calculate median pchembl_value for compound protein pairs with same assay id
     agg_function = {'connectivity': pd.Series.mode, 'accession': pd.Series.mode, 'SMILES': pd.Series.mode, 'pchembl_value':['median']}
-    agg_function.update(dict.fromkeys(['source', 'CID', 'all_doc_ids', 'type_IC50', 'type_EC50', 'type_KD', 'type_Ki'], lambda x: ';'.join(x)))
-    agg_function.update({'Activity_class': lambda x: pd.Series.mode(x).to_list()})
+    if name != 'all':
+        agg_function.update(dict.fromkeys(['source', 'CID', 'all_doc_ids', 'type_IC50', 'type_EC50', 'type_KD', 'type_Ki'], lambda x: ';'.join(x)))
+        agg_function.update({'Activity_class': lambda x: pd.Series.mode(x).to_list()})
     unique = res.groupby(['Activity_ID', 'AID', 'Quality', 'relation']).agg(agg_function).reset_index()
     unique = unique.droplevel(1, axis=1)
 
@@ -236,7 +241,7 @@ if __name__ == "__main__":
         if os.path.isfile(DATA_DIR / f'split_{name}.csv'):
             df= pd.read_csv(DATA_DIR / f'split_{name}.csv')
         else:
-            df = separate_aid(df)
+            df = separate_aid(df, name)
             save(df, name, version='split')
 
         # remove datapoints that are not from binding or functional assays
