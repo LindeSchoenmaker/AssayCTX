@@ -40,8 +40,8 @@ FROM ASSAYS
 JOIN TARGET_DICTIONARY ON ASSAYS.tid == TARGET_DICTIONARY.tid
 JOIN ACTIVITIES ON ASSAYS.assay_id == ACTIVITIES.assay_id 
 JOIN DOCS ON ASSAYS.doc_id == DOCS.doc_id 
-WHERE ASSAYS.assay_type = "F"
-OR ASSAYS.assay_type = "B"
+WHERE ASSAYS.assay_type = 'F'
+OR ASSAYS.assay_type = 'B'
 """
 
 df = chembl_downloader.query(sql, version='34')
