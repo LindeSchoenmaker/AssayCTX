@@ -1,12 +1,25 @@
 # AssayCTX
-This repository contains the code to reproduce and build on the findings from the assay context manuscript. 
+This repository contains the code to reproduce and build on the findings from the manuscript "Towards assay-aware bioactivity model(er)s: getting a grip on biological context" (https://chemrxiv.org/engage/chemrxiv/article-details/67cb11e0fa469535b96191ae).
 
 ## Description
-Contains pipeline for building datasets, using the QSPRpred models tested for this project and further analysis.
+The main finding from the assay-aware research is that there is a large variety in the measured values for the same protein-compound pair in ChEMBL. The assay categorization developed for this work explains part of this variety and is therefore usefull to take into account. Here we will first describe an easy way to get insight into the assays you are modelling. Then we will show how to calculate assay descriptors. Lastly we included the steps to take for reproducing the results described in the manuscript.
 
-## Environment
-Scripts are compatible with QSPRPred tagged v2.1.0a0. 
+## Obtain overview of assay context
+To use the pretrained BERTopic you need to install the following packages
+    conda create --name llm_agent python=3.11
+    pip install bertopic
+    pip install papyrus_scripts
+    pip install langchain-core              #optional
+    pip install langchain-experimental      #optional
+    pip install langchain-community         #optional
+    pip install llama-cpp-python            #optional
+    pip install jupyter
+    pip install pystow
+    pip install pandas
 
+For an example of how to assign your datapoints to assay topics have a look at the following notebook: assayctx/descriptors/llm_agent.ipynb
+
+## Reproducing results
 ### Dataset creation
 Data for validation can be extracted from ChEMBL and papyrus. 
 
