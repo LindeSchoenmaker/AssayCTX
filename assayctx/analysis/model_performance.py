@@ -19,19 +19,19 @@ FIG_DIR = pystow.join("AssayCTX", "figures")
 if __name__ == "__main__":
     df_full = pd.DataFrame()
     score_func = SklearnMetric(name='kendaltau',
-                               func=partial(kendalltau, nan_policy='omit'),
+                               func=partial(kendalltau, nan_policy='omit', method='asymptotic'),
                                scorer=make_scorer(
-                                   partial(kendalltau, nan_policy='omit')))
+                                   partial(kendalltau, nan_policy='omit', method='asymptotic')))
     scorer_dict = {
         'r2': NaNR2Score(),
         'rmse': NaNRMSEScore(),
         'kt': score_func
     }
-    targets = ['slcs', 'gpcrs', 'rtks']
+    targets = ['gpcrs']
     splits = ['random', 'scaffold']
 
-    conditions = ["control", "descriptor"]
-    metrics = ['r2', 'rmse', 'kt']
+    conditions = ["MT"]
+    metrics = ['kt']
 
     for target in targets:
         df_target = pd.DataFrame()
@@ -40,7 +40,7 @@ if __name__ == "__main__":
             for condition in conditions:
                 tasks = [None]
                 if condition == 'MT':
-                    tasks = ['topic_128', 'topic_64', 'topic_32']
+                    tasks = ['topic_128']
                 elif condition == 'descriptor':
                     tasks = ['AFP', 'ABOWS', 'AEMB']
                 for task in tasks:
@@ -56,6 +56,7 @@ if __name__ == "__main__":
                                     'QSPRID')
                             if condition == 'MT':
                                 df = df.dropna(axis=1, how='all')
+                                print(len(df))
                                 labels = [
                                     ele.replace('Label', '') for ele in df.columns
                                     if 'Label' in ele
@@ -76,7 +77,10 @@ if __name__ == "__main__":
                                 coef = coef[0]
                             values.append(coef)
                         mean = "%.2f" % (sum(values) / len(values))
-                        std = "%.2f" % statistics.stdev(values)
+                        try:
+                            std = "%.2f" % statistics.stdev(values)
+                        except AttributeError:
+                            std = 'NaN'
                         if j == 0:
                             df_metrics = pd.concat([
                                 df_metrics,
@@ -115,4 +119,4 @@ if __name__ == "__main__":
         df_full = pd.concat([df_full, df_target])
     
     print(df_full)
-    df_full.to_csv(DATA_DIR / 'model_performance_metrics.csv')
+    df_full.to_csv(DATA_DIR / 'model_performance_metrics_MT_asymptotic.csv')

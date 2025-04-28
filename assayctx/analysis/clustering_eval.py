@@ -19,11 +19,13 @@ def calc_scores(df, i, assay_type, column = 'meta_target', supervised='olr_clust
     df = pd.merge(df, df_topic, on='chembl_id')
 
     print(len(df.olr_cluster_None.unique()))
-    print(metrics.adjusted_mutual_info_score(df[column], df[supervised]))
-    print(metrics.homogeneity_score(df[column], df[supervised]))
-    print(metrics.completeness_score(df[column], df[supervised]))
-    print(metrics.v_measure_score(df[column], df[supervised]))
-    print(metrics.fowlkes_mallows_score(df[column], df[supervised]))
+    ami = metrics.adjusted_mutual_info_score(df[column], df[supervised])
+    homo = metrics.homogeneity_score(df[column], df[supervised])
+    compl = metrics.completeness_score(df[column], df[supervised])
+    v = metrics.v_measure_score(df[column], df[supervised])
+    fm = metrics.fowlkes_mallows_score(df[column], df[supervised])
+
+    return ami, homo, compl, v, fm
 
 if __name__ == "__main__":   
     df = pd.read_csv(DATA_DIR / 'AR_categorized.csv')
@@ -42,15 +44,19 @@ if __name__ == "__main__":
 
     df_org = pd.read_csv(DATA_DIR / 'AR_categorized.csv')
 
+    df_scores = pd.DataFrame(columns=["AMI", 'homogeneity', 'completeness', 'V-measure', 'Fowlkes-Mallows'])
     for assay_type, key in {'F': 'meta_target', 'B': 'standard_type'}.items():
         print(assay_type)
         for i in [16, 32, 64, 128]:
-            print(i)
-            calc_scores(df_org, i, assay_type, key)
+            for supervised in ['olr_cluster_None', 'olr_cluster_assay_type', 'olr_cluster_standard_type']:
+                print(i)
+                ami, homo, compl, v, fm = calc_scores(df_org, i, assay_type, key, supervised=supervised)
+                df_scores.loc[assay_type + " " + str(i)+ " " + supervised] = [ami, homo, compl, v, fm]
+    df_scores.to_csv('data/AR_clustering_scores.csv')
 
-    for assay_type in ['F', 'B']:
-        print(assay_type)
-        i = 128
-        for supervised in ['olr_cluster_None', 'olr_cluster_assay_type', 'olr_cluster_standard_type']:
-            print(supervised)
-            calc_scores(df_org, i, assay_type, key, supervised='olr_cluster_None')
+    # for assay_type in ['F', 'B']:
+    #     print(assay_type)
+    #     i = 128
+    #     for supervised in ['olr_cluster_None', 'olr_cluster_assay_type', 'olr_cluster_standard_type']:
+    #         print(supervised)
+    #         calc_scores(df_org, i, assay_type, key, supervised='olr_cluster_None')

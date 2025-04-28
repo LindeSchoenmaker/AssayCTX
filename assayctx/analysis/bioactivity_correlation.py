@@ -1,4 +1,5 @@
 import itertools
+import statistics
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -7,7 +8,7 @@ import pandas as pd
 import pystow
 from sklearn.metrics import mean_absolute_error
 
-matplotlib.rcParams.update({'font.size': 18})
+matplotlib.rcParams.update({'font.size': 10})
 DATA_DIR = pystow.join("AssayCTX", "data")
 FIG_DIR = pystow.join("AssayCTX", "figures")
 
@@ -40,7 +41,7 @@ def aid_descriptor(data, precalculated_categorization):
 
 def preprocessing(df, precalculated_categorization=None):
     """From exploded papyrus data (one row per compound, protein assay combination) get dataframe with assay id integers"""
-    
+
     # turn AIDs into either unique integers or integers based on manual categorization
     df, aid_list = aid_descriptor(df, precalculated_categorization)
 
@@ -138,54 +139,82 @@ def MAE_scorer(df, assays):
 
     return mean_absolute_error(df_assay_comb['pchembl_value_x']['median'],df_assay_comb['pchembl_value_y']['median']), len(df_assay_comb)
 
+
 if __name__ == "__main__":
     # start with file with average pchembl value for ActivityId & AID combination
     plot = True
     if plot:
-        fig, ax = plt.subplots(1,3, figsize=(18, 6))
-        for i, name in enumerate(['GPCRs', 'Kinases', 'SLCs']):
-            file = f'filtered_assays_split_{name.lower()}.csv'
-            df = pd.read_csv(DATA_DIR / file, usecols=[
-                                'Activity_ID', 'accession', 'connectivity', 'AID', 'pchembl_value'])
+        fig, ax = plt.subplots(1, 3, figsize=(9, 5), dpi=300)
+        for i, name in enumerate(['GPCRs', 'TK protein kinases', 'SLCs']):
+            if name == 'TK protein kinases':
+                file = 'filtered_assays_split_rtks.csv'
+            else:
+                file = f'filtered_assays_split_{name.lower()}.csv'
+            df = pd.read_csv(DATA_DIR / file,
+                             usecols=[
+                                 'Activity_ID', 'accession', 'connectivity',
+                                 'AID', 'pchembl_value'
+                             ])
             df, aid_list = preprocessing(df)
             unique_aids = df.AID.unique()
-            
+
             assays, overlap_arr = overlap(df)
-            scatter_plot_combined(ax[i], df, assays, None, name, show_errorbar=False)
-        fig.savefig(FIG_DIR / 'scatter_compound_pchembl_comb_median_combined.png')
+            scatter_plot_combined(ax[i],
+                                  df,
+                                  assays,
+                                  None,
+                                  name,
+                                  show_errorbar=False)
+        plt.tight_layout()
+        fig.savefig(FIG_DIR /
+                    'Figure3.png')
     else:
+        df_scores = pd.DataFrame(columns=['target', 'base', 'clustered_mean', 'clustered_std'])
         # get MUE scores with and without clustering
-        for name in ['gpcrs', 'kinases', 'slcs', 'FBall']:
-            file = f'filtered_assays_split_{name}.csv'
+        for i, name in enumerate(['gpcrs', 'rtks', 'slcs']):
+            clustereds = []
+            for repeat in range(3):
+                file = f'filtered_assays_split_{name}.csv'
 
-            # get array with assays als column en row indices and sum of total measured on both as values
-            df = pd.read_csv(DATA_DIR / file, usecols=[
-                            'Activity_ID', 'accession', 'connectivity', 'AID', 'pchembl_value'])
+                # get array with assays als column en row indices and sum of total measured on both as values
+                df = pd.read_csv(DATA_DIR / file,
+                                usecols=[
+                                    'Activity_ID', 'accession', 'connectivity',
+                                    'AID', 'pchembl_value'
+                                ])
 
-            precalculated_categorization =  'descriptions_biobert_nomax_None_128.parquet'
-            df_org = pd.read_parquet(DATA_DIR / precalculated_categorization)
-            
-            df = pd.merge(df_org, df, left_on='chembl_id', right_on='AID')
-            scores = []
-            nums = []
-            topics = []
-            for topic in df['olr_cluster_None'].unique().tolist():
-                df_topic = df.loc[df['olr_cluster_None'] == topic]
-                df_topic, aid_list = preprocessing(df_topic)
-                unique_aids = df_topic.AID.unique()
-                assays_topic, overlap_arr = overlap(df_topic)
-                if len(assays_topic) > len(unique_aids):
-                    score, num = MAE_scorer(df_topic, assays_topic)
-                    scores.append(score)
-                    nums.append(num)
-                    topics.append(topic)
+                precalculated_categorization = f'descriptions_biobert_{repeat}_None_128.parquet'
+                df_org = pd.read_parquet(DATA_DIR / precalculated_categorization)
 
-            print(np.average(scores, weights=nums))
+                df = pd.merge(df_org, df, left_on='chembl_id', right_on='AID')
+                scores = []
+                nums = []
+                topics = []
+                for topic in df['olr_cluster_None'].unique().tolist():
+                    df_topic = df.loc[df['olr_cluster_None'] == topic]
+                    df_topic, aid_list = preprocessing(df_topic)
+                    unique_aids = df_topic.AID.unique()
+                    assays_topic, overlap_arr = overlap(df_topic)
+                    if len(assays_topic) > len(unique_aids):
+                        score, num = MAE_scorer(df_topic, assays_topic)
+                        scores.append(score)
+                        nums.append(num)
+                        topics.append(topic)
+
+                with_topics = np.average(scores, weights=nums)
+                clustereds.append(with_topics)
 
             # without clustering
             df, aid_list = preprocessing(df)
             unique_aids = df.AID.unique()
-            
+
             assays, overlap_arr = overlap(df)
             score, num = MAE_scorer(df, assays)
-            print(f'score for {name}: {score}')
+            without_topics = score
+
+            # average with clustering
+            with_topics_avg = sum(clustereds) / len(clustereds)
+            with_topics_std = statistics.stdev(clustereds)
+            df_scores.loc[i] = [name, without_topics, with_topics_avg, with_topics_std]
+
+        df_scores.to_csv(DATA_DIR / 'MAE_scores.csv')
