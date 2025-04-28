@@ -1,5 +1,6 @@
 import pickle
 
+import nltk
 import pandas as pd
 import pystow
 from sklearn.feature_extraction._stop_words import ENGLISH_STOP_WORDS
@@ -7,6 +8,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from textblob import TextBlob
 
 DATA_DIR = pystow.join("AssayCTX", "data")
+nltk.download()
 
 # Use TextBlob
 def textblob_tokenizer(str_input):
